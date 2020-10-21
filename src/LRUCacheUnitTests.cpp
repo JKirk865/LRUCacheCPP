@@ -24,22 +24,22 @@ namespace LRUCacheLib {
 	    const auto NumPutsPerThread = 1'000;
 	    const auto NumThreads = 10;
 
-	    try {
+		//Create a list of threads that will each call the PutTestFunc asynchronously.
+		vector<thread> threadlist;
+
+		try {
 			// Create a Lambda function that add unique elements to the cache
-			auto PutTestFunc = [](
-					LRUCacheLib::LRUCache<int, string> *cache,
-					int NumPuts, int StartInt) {
-				for(int i=StartInt; i<(StartInt+NumPuts); i++) {
-					cache->Put(i,to_string(i));
+			auto PutTestFunc = [&cache, NumPutsPerThread](int StartInt) {
+				for(int i=StartInt; i<(StartInt+NumPutsPerThread); i++) {
+					cache.Put(i,to_string(i));
 				}
 			};
 
-			//Create a list of threads that will each call the PutTestFunc asynchronously.
-			vector<thread> threadlist;
+
 			auto t1 = std::chrono::high_resolution_clock::now();
 			//Create and Start the Threads
 			for(int i=0; i < NumThreads; i++) {
-				threadlist.push_back(thread(PutTestFunc, &cache, NumPutsPerThread, (i*NumPutsPerThread)+1));
+				threadlist.push_back(thread(PutTestFunc, (i*NumPutsPerThread)+1));
 			}
 			//Join the threads when they are complete.
 			for (std::thread & th : threadlist)
@@ -54,6 +54,13 @@ namespace LRUCacheLib {
 			threadlist.clear(); // Clear the Vector to ensure the threads are destroyed.
 	    } catch(exception &e)
 	    {
+	    	// TODO -> How do I terminate a thread? This approach is untested
+//			for(auto t : threadlist) {
+//				pthread_cancel(t.native_handle());
+//			}
+
+
+	    	threadlist.clear(); // Clear the Vector to ensure the threads are destroyed.
 	    	cerr << "Exception thrown in PutTest(). " << e.what() <<  endl;
 	    }
 	}
@@ -64,27 +71,26 @@ namespace LRUCacheLib {
 	    const auto NumThreads = 10;
 	    const auto KeyRange = 10'000;
 
+	    //Create a list of threads that will each call the GetTestFunc asynchronously.
+		vector<thread> threadlist;
+
 	    try {
 			cout << "Starting GetTest() with " << cache.Count() << " entries." << endl;
 
 	    	// Create a Lambda function that attempt to find random elements from the cache
-			auto GetTestFunc = [](
-					LRUCacheLib::LRUCache<int, string> *cache,
-					int NumGets, int KeyRange) {
+			auto GetTestFunc = [&cache, NumGetsPerThread, KeyRange]() {
 				int NumFound = 0;
-				for(int i=0; i<NumGets; i++) {
-					auto v = cache->Get(rand() % KeyRange);
+				for(int i=0; i<NumGetsPerThread; i++) {
+					auto v = cache.Get(rand() % KeyRange);
 					if (v.has_value()) NumFound++;
 				}
 				cout << "GetTest Thread located " << NumFound << " matches." << endl;
 			};
 
-			//Create a list of threads that will each call the GetTestFunc asynchronously.
-			vector<thread> threadlist;
 			auto t1 = std::chrono::high_resolution_clock::now();
 			//Create and Start the Threads
 			for(int i=0; i < NumThreads; i++) {
-				threadlist.push_back(thread(GetTestFunc, &cache, NumGetsPerThread, KeyRange));
+				threadlist.push_back(thread(GetTestFunc));
 			}
 			//Join the threads when they are complete.
 			for (std::thread & th : threadlist)
@@ -99,7 +105,9 @@ namespace LRUCacheLib {
 			threadlist.clear(); // Clear the Vector to ensure the threads are destroyed.
 	    } catch(exception &e)
 	    {
-	    	cerr << "Exception thrown in GetTest(). " << e.what() <<  endl;
+			// TODO -> How to terminate thread
+	    	threadlist.clear(); // Clear the Vector to ensure the threads are destroyed.
+			cerr << "Exception thrown in GetTest(). " << e.what() <<  endl;
 	    }
 	}
 
