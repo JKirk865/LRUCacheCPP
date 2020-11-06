@@ -45,11 +45,12 @@ template<class K, class V>
 optional<V> LRUCache<K, V>::Get(const K & key) {
 	const lock_guard<mutex> lock(classpadlock);
 
-	auto it = items.find(key);
+	const auto it = items.find(key);
 	if (it != items.end()) {
-		cache.remove(key);
-		cache.push_back(key);
-		//cache.splice(cache.end(),cache, it, it); // Faster?
+		//cache.remove(key);
+		//cache.push_back(key);
+		// Using Splice to move it to the end is faster than the remove/Push above
+		cache.splice(cache.end(), cache, std::find(cache.begin(), cache.end(), key));
 		return it->second;
 	}
 	return std::nullopt;
@@ -75,9 +76,10 @@ void LRUCache<K, V>::Put(const K & key, const V & value) {
 
 	auto it = items.find(key);
 	if (it != items.end()) {
-		cache.remove(key);
-		cache.push_back(key);
-		//cache.splice(cache.end(),cache, it); // Faster?
+		//cache.remove(key);
+		//cache.push_back(key);
+		// Using Splice to move it to the end is faster than the remove/Push above
+		cache.splice(cache.end(), cache, std::find(cache.begin(), cache.end(), key));
 		it->second = value;
 		return;
 	}
@@ -106,7 +108,7 @@ list<pair<K, V>> LRUCache<K, V>::ToList() {
 	return list;
 }
 
-#if defined(DEBUG)
+#ifdef DEBUG
 
 class LRUCacheUnitTests: public ::testing::Test {
 public:
