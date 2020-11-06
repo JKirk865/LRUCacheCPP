@@ -20,10 +20,10 @@ template <class K, class V>
 			size_t Count();
 			void Clear();
 
-			optional<V> Get(K key);
-			void Put(K key, V value);
+			optional<V> Get(const K & key);
+			void Put(const K & key, const V & value);
 
-			bool Remove(K key);
+			bool Remove(const K & key);
 			list<pair<K, V>> ToList();
 
 		private:
