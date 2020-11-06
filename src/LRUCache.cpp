@@ -106,6 +106,8 @@ list<pair<K, V>> LRUCache<K, V>::ToList() {
 	return list;
 }
 
+#if defined(DEBUG)
+
 class LRUCacheUnitTests: public ::testing::Test {
 public:
 	LRUCacheUnitTests( ) {
@@ -258,6 +260,6 @@ public:
 		cout << "Num Items Removed " << NumRemoved << " matches." << endl;
 		ASSERT_EQ(KeyRange-NumRemoved, cache->Count());
 	}
-
+#endif
 } /* namespace LRUCacheLib */
 
