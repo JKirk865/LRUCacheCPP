@@ -183,7 +183,8 @@ public:
 
 	TEST_F(LRUCacheUnitTests, PutTest)
 	{
-		std::unique_ptr<LRUCache<int, string>> cache(new LRUCache<int, string>(1'000));
+		const int capacity = 1'000;
+		std::unique_ptr<LRUCache<int, string>> cache(new LRUCache<int, string>(capacity));
 
 		// Create a Lambda function that add unique elements to the cache
 		auto PutTestFunc = [&cache](int StartInt) {
@@ -204,7 +205,7 @@ public:
 				th.join();
 		}
 
-		ASSERT_EQ(NumThreads*NumPutsPerThread, cache->Count());
+		ASSERT_EQ(capacity, cache->Count());
 	}
 
 	TEST_F(LRUCacheUnitTests, GetTest)
