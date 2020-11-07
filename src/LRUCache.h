@@ -16,15 +16,15 @@ template <class K, class V>
 			LRUCache(size_t Capacity);
 			virtual ~LRUCache();
 
-			size_t Capacity();
-			size_t Count();
-			void Clear();
+			size_t Capacity() noexcept;
+			size_t Count() noexcept;
+			void Clear() noexcept;
 
 			optional<V> Get(const K & key);
 			void Put(const K & key, const V & value);
-
 			bool Remove(const K & key);
-			list<pair<K, V>> ToList();
+
+			list<pair<K, V>> ToList()noexcept;
 
 		private:
 			size_t    capacity = 0;

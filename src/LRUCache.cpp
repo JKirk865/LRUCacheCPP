@@ -23,20 +23,20 @@ LRUCache<K, V>::~LRUCache() {
 }
 
 template<class K, class V>
-size_t LRUCache<K, V>::Capacity() {
+size_t LRUCache<K, V>::Capacity() noexcept {
 	const lock_guard<mutex> lock(classpadlock);
 	return capacity;
 }
 
 template<class K, class V>
-void LRUCache<K, V>::Clear() {
+void LRUCache<K, V>::Clear() noexcept {
 	const lock_guard<mutex> lock(classpadlock);
 	items.clear();
 	cache.clear();
 }
 
 template<class K, class V>
-size_t LRUCache<K, V>::Count() {
+size_t LRUCache<K, V>::Count() noexcept {
 	const lock_guard<mutex> lock(classpadlock);
 	return cache.size();
 }
@@ -97,7 +97,7 @@ void LRUCache<K, V>::Put(const K & key, const V & value) {
 }
 
 template<class K, class V>
-list<pair<K, V>> LRUCache<K, V>::ToList() {
+list<pair<K, V>> LRUCache<K, V>::ToList() noexcept {
 	const lock_guard<mutex> lock(classpadlock);
 
 	list<pair<K, V>> list(0);
@@ -124,34 +124,59 @@ public:
 
    void SetUp( ) override {
        // code here will execute just before the test ensues
+	   srand(time(0));  // Use current time as seed for random generator
    }
 
    void TearDown( ) override {
        // code here will be called just after the test completes
-       // ok to through exceptions from here if need be
+       // ok to throw exceptions from here if need be
 		threadlist.clear(); // Clear the Vector to ensure the threads are destroyed.
    }
 
-   static void DumpList(list<pair<int, string>> l, string title)
+   /**
+    * Helper function to output the Cache from Oldest to Newest
+    * @param l The output from cache.ToList()
+    * @param title Optional, will be shown if included.
+    */
+   static void DumpList(list<pair<int, string>> l, string title="")
    {
-	   cout << title << endl;
-	   cout << "Oldest to Newest: " << l.size() << "." << endl;
+	   if (title.length() > 1)
+		   cout << title << endl;
+	   else
+		   cout << "Oldest to Newest: " << l.size() << "." << endl;
 	   for(auto i : l) {
 		   cout << "Key:" << i.first << " Value:" << i.second << endl;
 	   }
    }
 
-   // put in any custom data members that you need
-   //LRUCache<int, string> empty_cache<int, string>(10);
+   static LRUCache<int, string> *MakeCache(int Capacity, int KeyRange)
+   {
+	   LRUCache<int, string> *cache = new LRUCache<int, string>(Capacity);
+
+		// Add entries to the Cache
+	    while(cache->Count() != (size_t)Capacity)
+        {
+			auto key = (rand() % KeyRange);
+			cache->Put(key,to_string(key));
+		}
+
+		return cache;
+	 }
+
+     // custom data members
 	static const int NumPutsPerThread = 1'000;
 	static const int NumGetsPerThread = 1'000;
 	static const int NumThreads = 10;
 	static const int KeyRange = 10'000;
 
 	vector<thread> threadlist;
+	//LRUCache<int, string> empty_cache = LRUCache<int, string>(10);
 };
 
-
+	/**
+	 * A Simple test that inserts, finds, and removes single entries while checking that the count
+	 * is correct.
+	 */
 	TEST_F(LRUCacheUnitTests, SimpleTests)
 	{
 		LRUCacheLib::LRUCache<int, string> c(10);
@@ -181,6 +206,9 @@ public:
 
 	}
 
+	/**
+	 * Typical Speeds at 1000, 100 -> 47, 31, 36, 32
+	 */
 	TEST_F(LRUCacheUnitTests, PutTest)
 	{
 		const int capacity = 1'000;
@@ -193,7 +221,7 @@ public:
 			}
 		};
 
-		//Create and Start the Threads
+		//Create and Start the Threads that will push new entries into the cache
 		for(int i=0; i < NumThreads; i++) {
 			threadlist.push_back(thread(PutTestFunc, (i*NumPutsPerThread)+1));
 		}
@@ -208,6 +236,9 @@ public:
 		ASSERT_EQ(capacity, cache->Count());
 	}
 
+	/**
+	 * Typical Speeds at 1000, 100 -> 1318, 1200, 1198, 1266
+	 */
 	TEST_F(LRUCacheUnitTests, GetTest)
 	{
 	    std::unique_ptr<LRUCache<int, string>> cache(new LRUCache<int, string>(KeyRange));
@@ -242,7 +273,10 @@ public:
 		}
 	}
 
-	// Randomly remove some entries
+	/**
+	 * Randomly remove some entries
+	 * Typical Speeds at 1000, 100 -> 43, 44, 44
+	 */
 	TEST_F(LRUCacheUnitTests, RemoveTest)
 	{
 		int NumRemoved = 0;
@@ -263,6 +297,46 @@ public:
 		cout << "Num Items Removed " << NumRemoved << " matches." << endl;
 		ASSERT_EQ(KeyRange-NumRemoved, cache->Count());
 	}
-#endif
+
+	TEST_F(LRUCacheUnitTests, RemoveTest2)
+	{
+		// Make a cache with 100 entries randomly drawn from 1000 possibilities.
+		std::unique_ptr<LRUCache<int, string>> cache(MakeCache(100, 1000));
+		ASSERT_EQ(100, cache->Count());
+
+		int NumRemoved = 0;
+		for(int i=0; i < 100; i++)
+		{
+			const auto key = rand() % 1000;
+			if (cache->Remove(key)) {
+				NumRemoved++;
+				//cout << "[    RemoveTest2: Removed " << key << endl;
+			}
+		}
+		cout << "Num Items Removed " << NumRemoved << " matches." << endl;
+		ASSERT_EQ(100-NumRemoved, cache->Count());
+	}
+
+	TEST_F(LRUCacheUnitTests, GetTest2)
+	{
+		// Make a cache with 100 entries randomly drawn from 1000 possibilities.
+		std::unique_ptr<LRUCache<int, string>> cache(MakeCache(100, 1000));
+		ASSERT_EQ(100, cache->Count());
+
+		int NumFound = 0;
+		for(int i=0; i < 100; i++)
+		{
+			const auto key = rand() % 1000;
+			auto result = cache->Get(key);
+			if (result.has_value()) {
+				NumFound++;
+				//cout << "[    GetTest2: Removed " << key << endl;
+			}
+		}
+		cout << "Num Items Found " << NumFound << " matches." << endl;
+		ASSERT_EQ(100, cache->Count());
+	}
+
+	#endif
 } /* namespace LRUCacheLib */
 
